@@ -3,7 +3,7 @@ import datetime
 import requests
 
 # Sayfa sekmesi ayarları
-st.set_page_config(page_title="Özel Takip", page_icon="🌸")
+st.set_page_config(page_title="Özel Takvim", page_icon="🌸")
 
 # Şifreleri güvenli kasadan çekme
 NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
