@@ -68,7 +68,7 @@ def notiondan_ortalama_oku():
     return 5 # Eğer tabloda hiç veri yoksa varsayılan olarak 5 döner
 
 # --- ZARİF ARAYÜZ TASARIMI ---
-st.title("🌸 Güzel Yavruma")
+st.title("🌸 Güzel Yavruma ...")
 st.write("Hoş geldin! Sana özel takvimi oluşturmak için bilgileri aşağıdan seçebilirsin. ✨")
 
 # 1. Başlangıç Tarihi
