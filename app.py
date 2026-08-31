@@ -31,6 +31,42 @@ def veriyi_notiona_gonder(mod, baslangic, bitis, gelecek):
     cevap = requests.post(url, headers=headers, json=veri)
     return cevap.status_code
 
+# --- YENİ EKLENEN ZEKİ ALGORİTMA (Geçmişi Okuma) ---
+def notiondan_ortalama_oku():
+    url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
+    try:
+        res = requests.post(url, headers=headers)
+        if res.status_code == 200:
+            sonuclar = res.json().get("results", [])
+            toplam_gun = 0
+            sayac = 0
+            for kayit in sonuclar:
+                props = kayit.get("properties", {})
+                
+                bas_kutu = props.get("Başlangıç", {}).get("date")
+                bit_kutu = props.get("Bitiş", {}).get("date")
+                
+                if bas_kutu and bit_kutu:
+                    bas_str = bas_kutu.get("start")
+                    bit_str = bit_kutu.get("start")
+                    
+                    if bas_str and bit_str:
+                        # Gelen tarihleri matematiksel işleme sokuyoruz
+                        bas_tarih = datetime.datetime.strptime(bas_str.split('T')[0], "%Y-%m-%d").date()
+                        bit_tarih = datetime.datetime.strptime(bit_str.split('T')[0], "%Y-%m-%d").date()
+                        fark = (bit_tarih - bas_tarih).days
+                        
+                        # 1 ile 15 gün arasındaki mantıklı verileri ortalamaya kat
+                        if 1 <= fark <= 15: 
+                            toplam_gun += fark
+                            sayac += 1
+                            
+            if sayac > 0:
+                return round(toplam_gun / sayac)
+    except Exception:
+        pass
+    return 5 # Eğer tabloda hiç veri yoksa varsayılan olarak 5 döner
+
 # --- ZARİF ARAYÜZ TASARIMI ---
 st.title("🌸 Döngü Tahmincisi")
 st.write("Hoş geldin! Sana özel takvimi oluşturmak için bilgileri aşağıdan seçebilirsin. ✨")
@@ -38,10 +74,14 @@ st.write("Hoş geldin! Sana özel takvimi oluşturmak için bilgileri aşağıda
 # 1. Başlangıç Tarihi
 baslangic_tarihi = st.date_input("Son regl başlangıç tarihini seçebilir misin?")
 
+# --- AKILLI TAHMİN MESAJI ---
+hesaplanan_ortalama = notiondan_ortalama_oku()
+st.info(f"✨ Geçmiş kayıtlara göre bu dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
+
 # 2. Kaydırma Çubukları (Daha kibar metinlerle)
 col1, col2 = st.columns(2)
 with col1:
-    kanama_suresi = st.slider("Bu dönem ortalama kaç gün sürüyor?", min_value=2, max_value=10, value=5)
+    kanama_suresi = st.slider("Bu dönem ortalama kaç gün sürüyor?", min_value=2, max_value=10, value=hesaplanan_ortalama)
 with col2:
     dongu_uzunlugu = st.slider("İki döngü arası ortalama kaç gün?", min_value=21, max_value=35, value=28)
 
