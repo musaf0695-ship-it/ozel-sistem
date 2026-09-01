@@ -88,60 +88,58 @@ st.markdown(arkaplan_kodu, unsafe_allow_html=True)
 
 # --- ZARİF ARAYÜZ TASARIMI ---
 st.title("🌸 Güzel Yavruma ...")
-st.write("Hoş geldin! Sana özel takvimi oluşturmak için bilgileri aşağıdan seçebilirsin. ✨")
+# O kırmızıyla çizdiğin gereksiz yazıyı tamamen sildik!
 
 # --- AKILLI TAHMİN MESAJI ---
 hesaplanan_ortalama = notiondan_ortalama_oku()
-st.info(f"✨ Senin için verileri inceledim, geçmiş kayıtlara göre bu dönemin yaklaşık **{hesaplanan_ortalama} gün** sürmesi bekleniyor. 💖")
+# BURAYI ESKİ HALİNE GETİRDİM, İÇİNE KENDİ CÜMLENİ YAZABİLİRSİN:
+st.info(f"✨ Önümüzdeki dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
 
-# 1. Tek Takvimde Başlangıç ve Bitiş (Range Seçimi)
-bugun = datetime.date.today()
-varsayilan_bitis = bugun + datetime.timedelta(days=hesaplanan_ortalama)
+# 1. Başlangıç Tarihi (Her zaman girilecek)
+baslangic_tarihi = st.date_input("Başlangıç Tarihi 🩸")
 
-tarih_araligi = st.date_input(
-    "Başlangıç ve Bitiş Tarihini Takvimden Seçebilirsin 🗓️",
-    value=(bugun, varsayilan_bitis)
-)
+# 2. Döngü Bitti mi? (Mühendislik Çözümü)
+dongu_bitti_mi = st.checkbox("Bu döngü sona erdi (Bitiş tarihini takvimden seç)")
 
-# 2. Döngü Uzunluğu (Gelecek ayı tahmin etmek için)
+if dongu_bitti_mi:
+    # Eğer bittiyse gerçek bitiş tarihini kendi seçer
+    bitis_tarihi = st.date_input("Bitiş Tarihi 🌸", value=baslangic_tarihi)
+else:
+    # Eğer henüz bitmediyse, sistem ortalamayı baz alarak arka planda otomatik bir bitiş belirler
+    bitis_tarihi = baslangic_tarihi + datetime.timedelta(days=hesaplanan_ortalama)
+
+# 3. Döngü Uzunluğu (Gelecek ayı tahmin etmek için)
 st.write("") 
 dongu_uzunlugu = st.slider("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=28)
 
+# 4. Gelecek Ay Hesaplaması
+gelecek_ay_baslangic = baslangic_tarihi + datetime.timedelta(days=dongu_uzunlugu)
+
+st.divider()
+st.subheader("Gelecek Ayın Özeti 🗓️")
+
+# 5. Şık Göstergeler
+gosterge_kolon1, gosterge_kolon2 = st.columns(2)
+with gosterge_kolon1:
+    st.metric(label="Bu Döngünün Bitişi", value=bitis_tarihi.strftime("%d.%m.%Y"))
+with gosterge_kolon2:
+    st.metric(label="Bir Sonraki Beklenen", value=gelecek_ay_baslangic.strftime("%d.%m.%Y"))
+
 st.divider()
 
-# Kullanıcı takvimde tek bir tarih seçerse sistemin hata vermesini engelleme kalkanı:
-if len(tarih_araligi) == 2:
-    baslangic_tarihi = tarih_araligi[0]
-    bitis_tarihi = tarih_araligi[1]
+# 6. Kaydet Butonu ve Kutlama Mesajı
+if st.button("Bilgileri Kaydet 💌"):
+    durum_kodu = veriyi_notiona_gonder(
+        mod="Regl Döngüsü", 
+        baslangic=baslangic_tarihi, 
+        bitis=bitis_tarihi, 
+        gelecek=gelecek_ay_baslangic
+    )
     
-    # 3. Gelecek Ay Hesaplaması
-    gelecek_ay_baslangic = baslangic_tarihi + datetime.timedelta(days=dongu_uzunlugu)
-
-    st.subheader("Gelecek Ayın Özeti 🗓️")
-
-    # 4. Şık Göstergeler
-    gosterge_kolon1, gosterge_kolon2 = st.columns(2)
-    with gosterge_kolon1:
-        st.metric(label="Bu Döngünün Bitişi", value=bitis_tarihi.strftime("%d.%m.%Y"))
-    with gosterge_kolon2:
-        st.metric(label="Bir Sonraki Beklenen", value=gelecek_ay_baslangic.strftime("%d.%m.%Y"))
-
-    st.divider()
-
-    # 5. Kaydet Butonu ve Kutlama Mesajı
-    if st.button("Bilgileri Kaydet 💌"):
-        durum_kodu = veriyi_notiona_gonder(
-            mod="Regl Döngüsü", 
-            baslangic=baslangic_tarihi, 
-            bitis=bitis_tarihi, 
-            gelecek=gelecek_ay_baslangic
-        )
-        
-        if durum_kodu == 200:
-            st.success("Harika! Tarihler başarıyla kaydedildi. Her şey kontrol altında! 😎💖")
-            st.balloons()
-        else:
-            st.error("Bir hata oluştu. Lütfen bağlantıları kontrol et.")
-else:
+    if durum_kodu == 200:
+        st.success("Harika! Tarihler başarıyla kaydedildi. Her şey kontrol altında! 😎💖")
+        st.balloons()
+    else:
+        st.error("Bir hata oluştu. Lütfen bağlantıları kontrol et.")
     # Kullanıcı bitiş tarihini seçmeyi unutursa çıkacak kibar uyarı
     st.warning("İşleme devam edebilmek için takvim üzerinden bir de **bitiş tarihi** seçmelisin. (Takvime iki kere tıklayabilirsin) ✨")
