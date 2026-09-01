@@ -70,11 +70,17 @@ def notiondan_ortalama_oku():
 # --- ARKA PLAN TASARIMI (CSS ENJEKSİYONU) ---
 arkaplan_kodu = f"""
 <style>
+/* Ana Arka Plan ve Şeffaflık Ayarı */
 .stApp {{
-    background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg") !important;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.45)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg") !important;
     background-size: cover !important;
     background-position: center !important;
     background-attachment: fixed !important;
+}}
+
+/* Üstteki inatçı pembe şeridi şeffaf yapma */
+[data-testid="stHeader"] {{
+    background: transparent !important;
 }}
 </style>
 """
