@@ -95,7 +95,7 @@ baslangic_tarihi = st.date_input("Son regl başlangıç tarihini seçebilir misi
 
 # --- AKILLI TAHMİN MESAJI ---
 hesaplanan_ortalama = notiondan_ortalama_oku()
-st.info(f"✨ Geçmiş kayıtlara göre bu dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
+st.info(f"✨ Önümüzdeki dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
 
 # 2. Kaydırma Çubukları (Daha kibar metinlerle)
 col1, col2 = st.columns(2)
