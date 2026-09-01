@@ -70,11 +70,11 @@ def notiondan_ortalama_oku():
 # --- ARKA PLAN TASARIMI (CSS ENJEKSİYONU) ---
 arkaplan_kodu = f"""
 <style>
-[data-testid="stAppViewContainer"] > .main {{
-    background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
+.stApp {{
+    background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg") !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-attachment: fixed !important;
 }}
 </style>
 """
