@@ -67,6 +67,19 @@ def notiondan_ortalama_oku():
         pass
     return 5 # Eğer tabloda hiç veri yoksa varsayılan olarak 5 döner
 
+# --- ARKA PLAN TASARIMI (CSS ENJEKSİYONU) ---
+arkaplan_kodu = f"""
+<style>
+[data-testid="stAppViewContainer"] > .main {{
+    background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}}
+</style>
+"""
+st.markdown(arkaplan_kodu, unsafe_allow_html=True)
+
 # --- ZARİF ARAYÜZ TASARIMI ---
 st.title("🌸 Güzel Yavruma ...")
 st.write("Hoş geldin! Sana özel takvimi oluşturmak için bilgileri aşağıdan seçebilirsin. ✨")
