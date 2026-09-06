@@ -1,12 +1,11 @@
 import streamlit as st
 import datetime
 import requests
-import calendar # TAKVİM ÇİZMEK İÇİN YENİ EKLENDİ
+import calendar 
 
 # Sayfa sekmesi ayarları
 st.set_page_config(page_title="Özel Takvim", page_icon="🌸")
 
-# Şifreleri güvenli kasadan çekme
 NOTION_TOKEN = st.secrets["NOTION_TOKEN"]
 DATABASE_ID = st.secrets["DATABASE_ID"]
 
@@ -18,7 +17,6 @@ headers = {
 
 def veriyi_notiona_gonder(mod, baslangic, bitis, gelecek):
     url = "https://api.notion.com/v1/pages"
-    
     veri = {
         "parent": {"database_id": DATABASE_ID},
         "properties": {
@@ -28,115 +26,103 @@ def veriyi_notiona_gonder(mod, baslangic, bitis, gelecek):
             "Gelecek Beklenen": {"date": {"start": str(gelecek)}}
         }
     }
-    
     cevap = requests.post(url, headers=headers, json=veri)
     return cevap.status_code
 
-# --- ZEKİ ALGORİTMA 1 (Kanama Süresi Ortalaması) ---
-def notiondan_ortalama_oku():
+# --- YENİ BİRLEŞTİRİLMİŞ ZEKİ MOTOR (Hız ve Renk Hafızası İçin) ---
+def notion_verilerini_analiz_et():
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
+    ortalama_kanama = 5
+    ortalama_dongu = 28
+    gecmis_gunler_seti = set()
+    
     try:
         res = requests.post(url, headers=headers)
         if res.status_code == 200:
             sonuclar = res.json().get("results", [])
-            toplam_gun = 0
-            sayac = 0
-            for kayit in sonuclar:
-                props = kayit.get("properties", {})
-                
-                bas_kutu = props.get("Başlangıç", {}).get("date")
-                bit_kutu = props.get("Bitiş", {}).get("date")
-                
-                if bas_kutu and bit_kutu:
-                    bas_str = bas_kutu.get("start")
-                    bit_str = bit_kutu.get("start")
-                    
-                    if bas_str and bit_str:
-                        bas_tarih = datetime.datetime.strptime(bas_str.split('T')[0], "%Y-%m-%d").date()
-                        bit_tarih = datetime.datetime.strptime(bit_str.split('T')[0], "%Y-%m-%d").date()
-                        fark = (bit_tarih - bas_tarih).days
-                        
-                        if 1 <= fark <= 15: 
-                            toplam_gun += fark
-                            sayac += 1
-                            
-            if sayac > 0:
-                return round(toplam_gun / sayac)
-    except Exception:
-        pass
-    return 5 
-
-# --- ZEKİ ALGORİTMA 2 (İki Döngü Arası Süre Ortalaması) ---
-def notiondan_dongu_uzunlugu_oku():
-    url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
-    try:
-        res = requests.post(url, headers=headers)
-        if res.status_code == 200:
-            sonuclar = res.json().get("results", [])
+            toplam_kanama = 0
+            kanama_sayaci = 0
             baslangic_tarihleri = []
             
             for kayit in sonuclar:
                 props = kayit.get("properties", {})
                 bas_kutu = props.get("Başlangıç", {}).get("date")
+                bit_kutu = props.get("Bitiş", {}).get("date")
+                
                 if bas_kutu and bas_kutu.get("start"):
                     bas_str = bas_kutu.get("start").split('T')[0]
                     bas_tarih = datetime.datetime.strptime(bas_str, "%Y-%m-%d").date()
                     baslangic_tarihleri.append(bas_tarih)
+                    
+                    if bit_kutu and bit_kutu.get("start"):
+                        bit_str = bit_kutu.get("start").split('T')[0]
+                        bit_tarih = datetime.datetime.strptime(bit_str, "%Y-%m-%d").date()
+                        fark = (bit_tarih - bas_tarih).days
+                        
+                        if 0 <= fark <= 15: 
+                            toplam_kanama += fark
+                            kanama_sayaci += 1
+                            # Geçmiş günleri Su Yeşili boyamak için hafızaya alıyoruz
+                            for i in range(fark + 1):
+                                gecmis_gunler_seti.add(bas_tarih + datetime.timedelta(days=i))
             
+            if kanama_sayaci > 0:
+                ortalama_kanama = round(toplam_kanama / kanama_sayaci)
+                if ortalama_kanama == 0: ortalama_kanama = 1
+                
             if len(baslangic_tarihleri) >= 2:
                 baslangic_tarihleri.sort()
-                toplam_fark = 0
-                sayac = 0
+                toplam_dongu = 0
+                dongu_sayaci = 0
                 for i in range(1, len(baslangic_tarihleri)):
                     fark = (baslangic_tarihleri[i] - baslangic_tarihleri[i-1]).days
                     if 21 <= fark <= 35:
-                        toplam_fark += fark
-                        sayac += 1
-                if sayac > 0:
-                    return round(toplam_fark / sayac)
+                        toplam_dongu += fark
+                        dongu_sayaci += 1
+                if dongu_sayaci > 0:
+                    ortalama_dongu = round(toplam_dongu / dongu_sayaci)
     except Exception:
         pass
-    return 28 
+        
+    return ortalama_kanama, ortalama_dongu, gecmis_gunler_seti
 
-# --- GÖRSEL TAKVİM OLUŞTURUCU (YENİ EKLENDİ) ---
-def gorsel_takvim_ciz(baslangic_tarihi, sure):
-    yil = baslangic_tarihi.year
-    ay = baslangic_tarihi.month
-    
+# --- GÖRSEL TAKVİM ÇİZİCİ (Su Yeşili ve Pembe Destekli) ---
+def aylik_takvim_ciz(yil, ay, gelecek_gunler, gecmis_gunler):
     cal = calendar.monthcalendar(yil, ay)
     ay_isimleri = ["", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
     gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
     
     html = f"""
-    <div style="background-color: rgba(255, 255, 255, 0.7); padding: 15px; border-radius: 15px; text-align: center; margin-top: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-        <h4 style="color: #d81b60; margin-bottom: 10px; font-family: sans-serif;">{ay_isimleri[ay]} {yil}</h4>
-        <table style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
+    <div style="background-color: rgba(255, 255, 255, 0.75); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <h4 style="color: #d81b60; margin-bottom: 5px; margin-top: 5px; font-family: sans-serif;">{ay_isimleri[ay]} {yil}</h4>
+        <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 15px;">
             <tr>
     """
     for gun in gun_isimleri:
-        html += f'<th style="padding: 5px; color: #555; font-size: 14px;">{gun}</th>'
+        html += f'<th style="padding: 5px; color: #666;">{gun}</th>'
     html += "</tr>"
-    
-    # Boyanacak günleri hesapla
-    beklenen_gunler = [(baslangic_tarihi + datetime.timedelta(days=i)).day for i in range(sure) if (baslangic_tarihi + datetime.timedelta(days=i)).month == ay]
     
     for hafta in cal:
         html += "<tr>"
         for gun in hafta:
             if gun == 0:
                 html += "<td></td>"
-            elif gun in beklenen_gunler:
-                # Pembe yuvarlak içine alınmış beklenen günler
-                html += f'<td><div style="background-color: #ff8fa3; color: white; border-radius: 50%; width: 28px; height: 28px; line-height: 28px; margin: 2px auto; font-weight: bold; font-size: 14px; box-shadow: 0 2px 4px rgba(255, 143, 163, 0.4);">{gun}</div></td>'
             else:
-                # Normal günler
-                html += f'<td style="padding: 5px; color: #333; font-size: 14px;">{gun}</td>'
+                guncel_tarih = datetime.date(yil, ay, gun)
+                if guncel_tarih in gecmis_gunler:
+                    # Geçmiş - SU YEŞİLİ
+                    html += f'<td><div style="background-color: #58b3a4; color: white; border-radius: 50%; width: 28px; height: 28px; line-height: 28px; margin: 2px auto; font-weight: bold; box-shadow: 0 2px 4px rgba(88, 179, 164, 0.5);">{gun}</div></td>'
+                elif guncel_tarih in gelecek_gunler:
+                    # Gelecek Tahmini - PEMBE
+                    html += f'<td><div style="background-color: #ff8fa3; color: white; border-radius: 50%; width: 28px; height: 28px; line-height: 28px; margin: 2px auto; font-weight: bold; box-shadow: 0 2px 4px rgba(255, 143, 163, 0.5);">{gun}</div></td>'
+                else:
+                    html += f'<td style="padding: 5px; color: #333;">{gun}</td>'
         html += "</tr>"
         
     html += "</table></div>"
     return html
 
-# --- ARKA PLAN TASARIMI VE GÜVENLİK (CSS ENJEKSİYONU) ---
+# --- ARKA PLAN TASARIMI VE GÜVENLİK ---
 arkaplan_kodu = f"""
 <style>
 .stApp {{
@@ -157,8 +143,8 @@ st.markdown(arkaplan_kodu, unsafe_allow_html=True)
 # --- ZARİF ARAYÜZ TASARIMI ---
 st.title("🌸 Güzel Yavruma ...")
 
-hesaplanan_ortalama = notiondan_ortalama_oku()
-hesaplanan_dongu = notiondan_dongu_uzunlugu_oku()
+# Algoritmaları tek fonksiyonda çalıştırıp verileri al
+hesaplanan_ortalama, hesaplanan_dongu, gecmis_gunler_seti = notion_verilerini_analiz_et()
 
 st.info(f"✨ Önümüzdeki dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
 
@@ -171,17 +157,66 @@ if dongu_bitti_mi:
 else:
     bitis_tarihi = baslangic_tarihi + datetime.timedelta(days=hesaplanan_ortalama)
 
+# Seçili olan aralığı canlı olarak "Geçmiş (Su Yeşili)" listesine ekliyoruz
+secili_fark = (bitis_tarihi - baslangic_tarihi).days
+for i in range(secili_fark + 1):
+    gecmis_gunler_seti.add(baslangic_tarihi + datetime.timedelta(days=i))
+
 st.write("") 
-dongu_uzunlugu = st.slider("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=hesaplanan_dongu)
+# Çubuk (Slider) yerine okları olan Number Input (Sayı kutusu)
+dongu_uzunlugu = st.number_input("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=hesaplanan_dongu, step=1)
 
 gelecek_ay_baslangic = baslangic_tarihi + datetime.timedelta(days=dongu_uzunlugu)
 
 st.divider()
-st.subheader("Gelecek Ayın Özeti 🗓️")
 
-# Görsel Takvimi Ekrana Basma
-takvim_html = gorsel_takvim_ciz(gelecek_ay_baslangic, hesaplanan_ortalama)
-st.markdown(takvim_html, unsafe_allow_html=True)
+# --- TAKVİM KONTROL PANELİ ---
+st.subheader("Takvim & Tahmin Haritası 🗓️")
+
+# Oklar için hafıza (Session State)
+if 'ay_ofseti' not in st.session_state:
+    st.session_state.ay_ofseti = 0
+
+col_sol, col_orta, col_sag = st.columns([1, 2, 1])
+with col_sol:
+    if st.button("◀ Önceki Ay"):
+        st.session_state.ay_ofseti -= 1
+with col_sag:
+    if st.button("Sonraki Ay ▶"):
+        st.session_state.ay_ofseti += 1
+
+# Gelecekteki 1 yıllık (12 döngü) pembe tahminleri oluşturuyoruz
+gelecek_kanama_gunleri = set()
+gecici_tarih = baslangic_tarihi
+for _ in range(12):
+    gecici_tarih += datetime.timedelta(days=dongu_uzunlugu)
+    for i in range(hesaplanan_ortalama):
+        gelecek_kanama_gunleri.add(gecici_tarih + datetime.timedelta(days=i))
+
+# Hangi ayın gösterileceğini hesaplama
+bugun = datetime.date.today()
+gosterilecek_ay = bugun.month + st.session_state.ay_ofseti
+gosterilecek_yil = bugun.year
+
+while gosterilecek_ay > 12:
+    gosterilecek_ay -= 12
+    gosterilecek_yil += 1
+while gosterilecek_ay < 1:
+    gosterilecek_ay += 12
+    gosterilecek_yil -= 1
+
+# Takvimi Ekrana Bas
+st.markdown(aylik_takvim_ciz(gosterilecek_yil, gosterilecek_ay, gelecek_kanama_gunleri, gecmis_gunler_seti), unsafe_allow_html=True)
+
+# Renklerin ne anlama geldiğini gösteren şık bir bilgi notu
+st.markdown("""
+<div style="text-align: center; margin-bottom: 15px; font-size: 14px;">
+    <span style="color: #58b3a4; font-weight: bold;">🟢 Su Yeşili:</span> Geçmiş & Kaydedilen &nbsp; | &nbsp; 
+    <span style="color: #ff8fa3; font-weight: bold;">🔴 Pembe:</span> Gelecek Tahmini
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
 
 gosterge_kolon1, gosterge_kolon2 = st.columns(2)
 with gosterge_kolon1:
