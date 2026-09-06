@@ -157,11 +157,6 @@ if dongu_bitti_mi:
 else:
     bitis_tarihi = baslangic_tarihi + datetime.timedelta(days=hesaplanan_ortalama)
 
-# Seçili olan aralığı canlı olarak "Geçmiş (Su Yeşili)" listesine ekliyoruz
-secili_fark = (bitis_tarihi - baslangic_tarihi).days
-for i in range(secili_fark + 1):
-    gecmis_gunler_seti.add(baslangic_tarihi + datetime.timedelta(days=i))
-
 st.write("") 
 # Çubuk (Slider) yerine okları olan Number Input (Sayı kutusu)
 dongu_uzunlugu = st.number_input("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=hesaplanan_dongu, step=1)
