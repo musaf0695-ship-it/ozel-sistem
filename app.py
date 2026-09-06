@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import requests
+import calendar # TAKVİM ÇİZMEK İÇİN YENİ EKLENDİ
 
 # Sayfa sekmesi ayarları
 st.set_page_config(page_title="Özel Takvim", page_icon="🌸")
@@ -82,7 +83,6 @@ def notiondan_dongu_uzunlugu_oku():
                     bas_tarih = datetime.datetime.strptime(bas_str, "%Y-%m-%d").date()
                     baslangic_tarihleri.append(bas_tarih)
             
-            # Tarihleri sıralayıp aralarındaki gün farkını hesaplıyoruz
             if len(baslangic_tarihleri) >= 2:
                 baslangic_tarihleri.sort()
                 toplam_fark = 0
@@ -96,12 +96,49 @@ def notiondan_dongu_uzunlugu_oku():
                     return round(toplam_fark / sayac)
     except Exception:
         pass
-    return 28 # Veri yoksa varsayılan 28 kalır
+    return 28 
+
+# --- GÖRSEL TAKVİM OLUŞTURUCU (YENİ EKLENDİ) ---
+def gorsel_takvim_ciz(baslangic_tarihi, sure):
+    yil = baslangic_tarihi.year
+    ay = baslangic_tarihi.month
+    
+    cal = calendar.monthcalendar(yil, ay)
+    ay_isimleri = ["", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+    gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+    
+    html = f"""
+    <div style="background-color: rgba(255, 255, 255, 0.7); padding: 15px; border-radius: 15px; text-align: center; margin-top: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <h4 style="color: #d81b60; margin-bottom: 10px; font-family: sans-serif;">{ay_isimleri[ay]} {yil}</h4>
+        <table style="width: 100%; border-collapse: collapse; font-family: sans-serif;">
+            <tr>
+    """
+    for gun in gun_isimleri:
+        html += f'<th style="padding: 5px; color: #555; font-size: 14px;">{gun}</th>'
+    html += "</tr>"
+    
+    # Boyanacak günleri hesapla
+    beklenen_gunler = [(baslangic_tarihi + datetime.timedelta(days=i)).day for i in range(sure) if (baslangic_tarihi + datetime.timedelta(days=i)).month == ay]
+    
+    for hafta in cal:
+        html += "<tr>"
+        for gun in hafta:
+            if gun == 0:
+                html += "<td></td>"
+            elif gun in beklenen_gunler:
+                # Pembe yuvarlak içine alınmış beklenen günler
+                html += f'<td><div style="background-color: #ff8fa3; color: white; border-radius: 50%; width: 28px; height: 28px; line-height: 28px; margin: 2px auto; font-weight: bold; font-size: 14px; box-shadow: 0 2px 4px rgba(255, 143, 163, 0.4);">{gun}</div></td>'
+            else:
+                # Normal günler
+                html += f'<td style="padding: 5px; color: #333; font-size: 14px;">{gun}</td>'
+        html += "</tr>"
+        
+    html += "</table></div>"
+    return html
 
 # --- ARKA PLAN TASARIMI VE GÜVENLİK (CSS ENJEKSİYONU) ---
 arkaplan_kodu = f"""
 <style>
-/* 1. Arka Plan Parlaklığını Artırma (Çiçekler artık capcanlı) */
 .stApp {{
     background-color: white !important;
     background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg") !important;
@@ -109,24 +146,10 @@ arkaplan_kodu = f"""
     background-position: center !important;
     background-attachment: fixed !important;
 }}
-
-/* 2. Üst Şeridi, GitHub İkonunu ve Menüyü Tamamen Gizleme */
-[data-testid="stToolbar"] {{
-    visibility: hidden !important;
-    display: none !important;
-}}
-[data-testid="stHeader"] {{
-    background: transparent !important;
-    height: 0px !important;
-}}
-#MainMenu {{
-    visibility: hidden !important;
-    display: none !important;
-}}
-footer {{
-    visibility: hidden !important;
-    display: none !important;
-}}
+[data-testid="stToolbar"] {{ visibility: hidden !important; display: none !important; }}
+[data-testid="stHeader"] {{ background: transparent !important; height: 0px !important; }}
+#MainMenu {{ visibility: hidden !important; display: none !important; }}
+footer {{ visibility: hidden !important; display: none !important; }}
 </style>
 """
 st.markdown(arkaplan_kodu, unsafe_allow_html=True)
@@ -134,16 +157,13 @@ st.markdown(arkaplan_kodu, unsafe_allow_html=True)
 # --- ZARİF ARAYÜZ TASARIMI ---
 st.title("🌸 Güzel Yavruma ...")
 
-# AKILLI ALGORİTMALARI ÇALIŞTIRMA
 hesaplanan_ortalama = notiondan_ortalama_oku()
 hesaplanan_dongu = notiondan_dongu_uzunlugu_oku()
 
 st.info(f"✨ Önümüzdeki dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
 
-# 1. Başlangıç Tarihi
 baslangic_tarihi = st.date_input("Başlangıç Tarihi 🩸")
 
-# 2. Döngü Bitti mi?
 dongu_bitti_mi = st.checkbox("Bu döngü sona erdi (Bitiş tarihini takvimden seç)")
 
 if dongu_bitti_mi:
@@ -151,17 +171,18 @@ if dongu_bitti_mi:
 else:
     bitis_tarihi = baslangic_tarihi + datetime.timedelta(days=hesaplanan_ortalama)
 
-# 3. Döngü Uzunluğu (Değer artık akıllı algoritmadan geliyor)
 st.write("") 
 dongu_uzunlugu = st.slider("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=hesaplanan_dongu)
 
-# 4. Gelecek Ay Hesaplaması
 gelecek_ay_baslangic = baslangic_tarihi + datetime.timedelta(days=dongu_uzunlugu)
 
 st.divider()
 st.subheader("Gelecek Ayın Özeti 🗓️")
 
-# 5. Şık Göstergeler
+# Görsel Takvimi Ekrana Basma
+takvim_html = gorsel_takvim_ciz(gelecek_ay_baslangic, hesaplanan_ortalama)
+st.markdown(takvim_html, unsafe_allow_html=True)
+
 gosterge_kolon1, gosterge_kolon2 = st.columns(2)
 with gosterge_kolon1:
     st.metric(label="Bu Döngünün Bitişi", value=bitis_tarihi.strftime("%d.%m.%Y"))
@@ -170,7 +191,6 @@ with gosterge_kolon2:
 
 st.divider()
 
-# 6. Kaydet Butonu
 if st.button("Bilgileri Kaydet 💌"):
     durum_kodu = veriyi_notiona_gonder(
         mod="Regl Döngüsü", 
