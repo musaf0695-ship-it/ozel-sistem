@@ -31,7 +31,7 @@ def veriyi_notiona_gonder(mod, baslangic, bitis, gelecek):
     cevap = requests.post(url, headers=headers, json=veri)
     return cevap.status_code
 
-# --- YENİ EKLENEN ZEKİ ALGORİTMA (Geçmişi Okuma) ---
+# --- ZEKİ ALGORİTMA 1 (Kanama Süresi Ortalaması) ---
 def notiondan_ortalama_oku():
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
     try:
@@ -51,12 +51,10 @@ def notiondan_ortalama_oku():
                     bit_str = bit_kutu.get("start")
                     
                     if bas_str and bit_str:
-                        # Gelen tarihleri matematiksel işleme sokuyoruz
                         bas_tarih = datetime.datetime.strptime(bas_str.split('T')[0], "%Y-%m-%d").date()
                         bit_tarih = datetime.datetime.strptime(bit_str.split('T')[0], "%Y-%m-%d").date()
                         fark = (bit_tarih - bas_tarih).days
                         
-                        # 1 ile 15 gün arasındaki mantıklı verileri ortalamaya kat
                         if 1 <= fark <= 15: 
                             toplam_gun += fark
                             sayac += 1
@@ -65,7 +63,40 @@ def notiondan_ortalama_oku():
                 return round(toplam_gun / sayac)
     except Exception:
         pass
-    return 5 # Eğer tabloda hiç veri yoksa varsayılan olarak 5 döner
+    return 5 
+
+# --- ZEKİ ALGORİTMA 2 (İki Döngü Arası Süre Ortalaması) ---
+def notiondan_dongu_uzunlugu_oku():
+    url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
+    try:
+        res = requests.post(url, headers=headers)
+        if res.status_code == 200:
+            sonuclar = res.json().get("results", [])
+            baslangic_tarihleri = []
+            
+            for kayit in sonuclar:
+                props = kayit.get("properties", {})
+                bas_kutu = props.get("Başlangıç", {}).get("date")
+                if bas_kutu and bas_kutu.get("start"):
+                    bas_str = bas_kutu.get("start").split('T')[0]
+                    bas_tarih = datetime.datetime.strptime(bas_str, "%Y-%m-%d").date()
+                    baslangic_tarihleri.append(bas_tarih)
+            
+            # Tarihleri sıralayıp aralarındaki gün farkını hesaplıyoruz
+            if len(baslangic_tarihleri) >= 2:
+                baslangic_tarihleri.sort()
+                toplam_fark = 0
+                sayac = 0
+                for i in range(1, len(baslangic_tarihleri)):
+                    fark = (baslangic_tarihleri[i] - baslangic_tarihleri[i-1]).days
+                    if 21 <= fark <= 35:
+                        toplam_fark += fark
+                        sayac += 1
+                if sayac > 0:
+                    return round(toplam_fark / sayac)
+    except Exception:
+        pass
+    return 28 # Veri yoksa varsayılan 28 kalır
 
 # --- ARKA PLAN TASARIMI VE GÜVENLİK (CSS ENJEKSİYONU) ---
 arkaplan_kodu = f"""
@@ -102,29 +133,27 @@ st.markdown(arkaplan_kodu, unsafe_allow_html=True)
 
 # --- ZARİF ARAYÜZ TASARIMI ---
 st.title("🌸 Güzel Yavruma ...")
-# O kırmızıyla çizdiğin gereksiz yazıyı tamamen sildik!
 
-# --- AKILLI TAHMİN MESAJI ---
+# AKILLI ALGORİTMALARI ÇALIŞTIRMA
 hesaplanan_ortalama = notiondan_ortalama_oku()
-# BURAYI ESKİ HALİNE GETİRDİM, İÇİNE KENDİ CÜMLENİ YAZABİLİRSİN:
+hesaplanan_dongu = notiondan_dongu_uzunlugu_oku()
+
 st.info(f"✨ Önümüzdeki dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
 
-# 1. Başlangıç Tarihi (Her zaman girilecek)
+# 1. Başlangıç Tarihi
 baslangic_tarihi = st.date_input("Başlangıç Tarihi 🩸")
 
-# 2. Döngü Bitti mi? (Mühendislik Çözümü)
+# 2. Döngü Bitti mi?
 dongu_bitti_mi = st.checkbox("Bu döngü sona erdi (Bitiş tarihini takvimden seç)")
 
 if dongu_bitti_mi:
-    # Eğer bittiyse gerçek bitiş tarihini kendi seçer
     bitis_tarihi = st.date_input("Bitiş Tarihi 🌸", value=baslangic_tarihi)
 else:
-    # Eğer henüz bitmediyse, sistem ortalamayı baz alarak arka planda otomatik bir bitiş belirler
     bitis_tarihi = baslangic_tarihi + datetime.timedelta(days=hesaplanan_ortalama)
 
-# 3. Döngü Uzunluğu (Gelecek ayı tahmin etmek için)
+# 3. Döngü Uzunluğu (Değer artık akıllı algoritmadan geliyor)
 st.write("") 
-dongu_uzunlugu = st.slider("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=28)
+dongu_uzunlugu = st.slider("İki döngü arası ortalama kaç gün sürüyor?", min_value=21, max_value=35, value=hesaplanan_dongu)
 
 # 4. Gelecek Ay Hesaplaması
 gelecek_ay_baslangic = baslangic_tarihi + datetime.timedelta(days=dongu_uzunlugu)
@@ -141,7 +170,7 @@ with gosterge_kolon2:
 
 st.divider()
 
-# 6. Kaydet Butonu ve Kutlama Mesajı
+# 6. Kaydet Butonu
 if st.button("Bilgileri Kaydet 💌"):
     durum_kodu = veriyi_notiona_gonder(
         mod="Regl Döngüsü", 
@@ -155,5 +184,3 @@ if st.button("Bilgileri Kaydet 💌"):
         st.balloons()
     else:
         st.error("Bir hata oluştu. Lütfen bağlantıları kontrol et.")
-    # Kullanıcı bitiş tarihini seçmeyi unutursa çıkacak kibar uyarı
-    st.warning("İşleme devam edebilmek için takvim üzerinden bir de **bitiş tarihi** seçmelisin. (Takvime iki kere tıklayabilirsin) ✨")
