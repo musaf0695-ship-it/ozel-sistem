@@ -67,20 +67,34 @@ def notiondan_ortalama_oku():
         pass
     return 5 # Eğer tabloda hiç veri yoksa varsayılan olarak 5 döner
 
-# --- ARKA PLAN TASARIMI (CSS ENJEKSİYONU) ---
+# --- ARKA PLAN TASARIMI VE GÜVENLİK (CSS ENJEKSİYONU) ---
 arkaplan_kodu = f"""
 <style>
-/* Ana Arka Plan ve Şeffaflık Ayarı */
+/* 1. Arka Plan Parlaklığını Artırma (Çiçekler artık capcanlı) */
 .stApp {{
-    background-image: linear-gradient(rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.20)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg") !important;
+    background-color: white !important;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)), url("https://raw.githubusercontent.com/musaf0695-ship-it/ozel-sistem/main/lilyum_arka_plan.jpg") !important;
     background-size: cover !important;
     background-position: center !important;
     background-attachment: fixed !important;
 }}
 
-/* Üstteki inatçı pembe şeridi şeffaf yapma */
+/* 2. Üst Şeridi, GitHub İkonunu ve Menüyü Tamamen Gizleme */
+[data-testid="stToolbar"] {{
+    visibility: hidden !important;
+    display: none !important;
+}}
 [data-testid="stHeader"] {{
     background: transparent !important;
+    height: 0px !important;
+}}
+#MainMenu {{
+    visibility: hidden !important;
+    display: none !important;
+}}
+footer {{
+    visibility: hidden !important;
+    display: none !important;
 }}
 </style>
 """
