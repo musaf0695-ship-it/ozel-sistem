@@ -173,7 +173,7 @@ if aktif_baslangic:
 else:
     varsayilan_baslangic = datetime.date.today()
 
-baslangic_tarihi = st.date_input("Başlangıç Tarihi 🩸", value=varsayilan_baslangic)
+baslangic_tarihi = st.date_input("Başlangıç Tarihi 🏗️🩸", value=varsayilan_baslangic)
 
 dongu_bitti_mi = st.checkbox("Bu döngü sona erdi (Bitiş tarihini takvimden seç)")
 
