@@ -15,7 +15,7 @@ headers = {
     "Notion-Version": "2022-06-28"
 }
 
-# --- AKILLI KAYIT & GÜNCELLEME MOTORU (YENİ!) ---
+# --- AKILLI KAYIT & GÜNCELLEME MOTORU ---
 def veriyi_notiona_gonder(mod, baslangic, bitis, gelecek, page_id=None):
     veri = {
         "properties": {
@@ -24,25 +24,22 @@ def veriyi_notiona_gonder(mod, baslangic, bitis, gelecek, page_id=None):
         }
     }
     
-    # Bitiş tarihi varsa ekle (Yoksa Notion'da boş kalır, bu da devam ediyor demektir)
     if bitis:
         veri["properties"]["Bitiş"] = {"date": {"start": str(bitis)}}
     if gelecek:
         veri["properties"]["Gelecek Beklenen"] = {"date": {"start": str(gelecek)}}
 
     if page_id:
-        # EĞER AKTİF BİR DÖNGÜ VARSA, YENİ SATIR AÇMA, ONU GÜNCELLE
         url = f"https://api.notion.com/v1/pages/{page_id}"
         cevap = requests.patch(url, headers=headers, json=veri)
     else:
-        # YENİ BİR DÖNGÜ BAŞLIYORSA SIFIRDAN SATIR AÇ
         url = "https://api.notion.com/v1/pages"
         veri["parent"] = {"database_id": DATABASE_ID}
         cevap = requests.post(url, headers=headers, json=veri)
         
     return cevap.status_code
 
-# --- YENİ BİRLEŞTİRİLMİŞ ZEKİ MOTOR (Canlı İzleme Hafızası) ---
+# --- YENİ BİRLEŞTİRİLMİŞ ZEKİ MOTOR ---
 def notion_verilerini_analiz_et():
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
     ortalama_kanama = 5
@@ -72,7 +69,6 @@ def notion_verilerini_analiz_et():
                     baslangic_tarihleri.append(bas_tarih)
                     
                     if bit_kutu and bit_kutu.get("start"):
-                        # TAMAMLANMIŞ DÖNGÜ
                         bit_str = bit_kutu.get("start").split('T')[0]
                         bit_tarih = datetime.datetime.strptime(bit_str, "%Y-%m-%d").date()
                         fark = (bit_tarih - bas_tarih).days
@@ -83,14 +79,12 @@ def notion_verilerini_analiz_et():
                             for i in range(fark + 1):
                                 gecmis_gunler_seti.add(bas_tarih + datetime.timedelta(days=i))
                     else:
-                        # --- CANLI İZLEME (Bitiş Tarihi Yok) ---
                         aktif_page_id = kayit_id
                         aktif_baslangic = bas_tarih
                         
-                        # Başlangıçtan bugüne kadar olan aralığı her gün canlı boya
                         fark = (bugun - bas_tarih).days
                         if fark >= 0:
-                            boyanacak_gun = min(fark, 15) # Güvenlik kilidi: 15 günden fazla boyamasın
+                            boyanacak_gun = min(fark, 15)
                             for i in range(boyanacak_gun + 1):
                                 gecmis_gunler_seti.add(bas_tarih + datetime.timedelta(days=i))
             
@@ -173,7 +167,6 @@ hesaplanan_ortalama, hesaplanan_dongu, gecmis_gunler_seti, aktif_page_id, aktif_
 
 st.info(f"✨ Önümüzdeki dönemin ortalama **{hesaplanan_ortalama} gün** sürmesi bekleniyor.")
 
-# Kullanıcıya aktif döngü bildirimi ve otomatik tarih ataması
 if aktif_baslangic:
     st.success("💧 Şu anda aktif bir döngü devam ediyor. Takvim anlık olarak yeşile boyanıyor!")
     varsayilan_baslangic = aktif_baslangic
@@ -188,7 +181,7 @@ if dongu_bitti_mi:
     bitis_tarihi = st.date_input("Bitiş Tarihi 🌸", value=baslangic_tarihi)
     kayit_icin_bitis = bitis_tarihi
 else:
-    kayit_icin_bitis = None # <--- NOTION'A BİTİŞ GİTMEYECEK, DEVAM EDİYOR SAYILACAK
+    kayit_icin_bitis = None 
     bitis_tarihi = baslangic_tarihi + datetime.timedelta(days=hesaplanan_ortalama)
 
 st.write("") 
@@ -253,15 +246,13 @@ if st.button("Bilgileri Kaydet 💌"):
     durum_kodu = veriyi_notiona_gonder(
         mod="Regl Döngüsü", 
         baslangic=baslangic_tarihi, 
-        bitis=kayit_icin_bitis, # Yeni mantık: Seçilmediyse 'None' gider.
+        bitis=kayit_icin_bitis, 
         gelecek=gelecek_ay_baslangic,
-        page_id=aktif_page_id # Devam eden döngü varsa yeni satır açmaz, varolanı günceller
+        page_id=aktif_page_id 
     )
     
     if durum_kodu == 200:
         st.success("Harika! Tarihler başarıyla kaydedildi. Her şey kontrol altında! 😎💖")
         st.balloons()
-    else:
-        st.error("Bir hata oluştu. Lütfen bağlantıları kontrol et.")
     else:
         st.error("Bir hata oluştu. Lütfen bağlantıları kontrol et.")
